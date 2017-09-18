@@ -35,25 +35,24 @@ with open('quotes.csv', 'rb') as quotes_file:
       first_row = False
       continue
     quote = row[0]
-    author = row[1].lower()
+    author = row[1]
     bio = row[4]
-    topics = tuple(row[7].split(','))
+    topics = tuple(x.lower().strip() for x in row[7].split(','))
     quote_object = (quote, author, topics)
     quotes.append(quote_object)
-    if author not in quotes_by_author:
-      quotes_by_author[author] = []
-    quotes_by_author[author].append(quote_object)
+    normalized_author = author.lower()
+    if normalized_author not in quotes_by_author:
+      quotes_by_author[normalized_author] = []
+    quotes_by_author[normalized_author].append(quote_object)
     for topic in list(topics):
-      topic = topic.lower()
       if topic not in quotes_by_topic:
         quotes_by_topic[topic] = []
-    quotes_by_topic[topic].append(quote_object)
+      quotes_by_topic[topic].append(quote_object)
     if author not in bio_by_author:
       bio_by_author[author] = bio
 
 # Returns a quote object matching the parameters of the request.
 def _get_quote():
-    print(request.json)
     parameters = request.json['result']['parameters']
     author = None
     topic = None
