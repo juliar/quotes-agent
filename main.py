@@ -1,12 +1,14 @@
-# This app serves quotes from famous female technologists by author and topic,
-# and serves bios by author.
+# This app serves quotes from famous women in STEM by author and topic, and
+# serves bios by author.
+# Created for the "Building a Conversational Agent" workshop at the 2017
+# Grace Hopper Conference.
 
 # [START app]
 import csv
 import logging
+import json
 import random
 import unicodedata
-import json
 
 from flask import Flask, request, make_response
 from flask_restful import Resource, Api
@@ -23,17 +25,20 @@ quotes_by_author = {}
 # Map from topic string to list of quote objects.
 quotes_by_topic = {}
 
-# Map from author to bio.
+# Map from author string to bio string.
 bio_by_author = {}
 
 # Read in quotes and bios.
 with open('quotes.csv', 'rb') as quotes_file:
   quotes_reader = csv.reader(quotes_file)
-  first_row = True
+
+  # Skip the header line.
+  next(quotes_reader, None)
+
+  # Each line of the csv has the format
+  # "quote, author, year_born, year_died, bio, date_spoken, source, topics,
+  # comments".
   for row in quotes_reader:
-    if first_row:
-      first_row = False
-      continue
     quote = row[0]
     author = row[1]
     bio = row[4]
@@ -48,51 +53,81 @@ with open('quotes.csv', 'rb') as quotes_file:
       if topic not in quotes_by_topic:
         quotes_by_topic[topic] = []
       quotes_by_topic[topic].append(quote_object)
-    if author not in bio_by_author:
-      bio_by_author[author] = bio
+    if normalized_author not in bio_by_author:
+      bio_by_author[normalized_author] = bio
 
-# Returns a quote object matching the parameters of the request.
+# Returns a quote object matching the parameters of the request, or None if
+# there are no matching quotes.
 def _get_quote():
-    parameters = request.json['result']['parameters']
-    author = None
-    topic = None
-    if 'author' in parameters:
-      author = unicodedata.normalize('NFKC', parameters['author']).lower()
-    if 'topic' in parameters:
-      topic = unicodedata.normalize('NFKC', parameters['topic']).lower()
+  # Extract the author and topic parameters. For robustness, the parameter
+  # names can be capitalized in any way.
+  parameters = request.json['result']['parameters']
+  author = None
+  topic = None
+  for key, value in parameters.items():
+    if key.lower() == 'author':
+      author = unicodedata.normalize('NFKC', value).lower()
+    elif key.lower() == 'topic':
+      topic = unicodedata.normalize('NFKC', value).lower()
 
-    applicable_author_quotes = set()
-    if author:
-      if author in quotes_by_author:
-        applicable_author_quotes = set(quotes_by_author[author])
-    else:
-      applicable_author_quotes = set(quotes)
+  # Find the set of quotes by the given author (all quotes if not specified).
+  applicable_author_quotes = set()
+  if author:
+    if author in quotes_by_author:
+      applicable_author_quotes = set(quotes_by_author[author])
+  else:
+    applicable_author_quotes = set(quotes)
 
-    applicable_topic_quotes = set()
-    if topic:
-      if topic in quotes_by_topic:
-        applicable_topic_quotes = set(quotes_by_topic[topic])
-    else:
-      applicable_topic_quotes = set(quotes)
+  # Find the set of quotes on the given topic (all quotes if not given).
+  applicable_topic_quotes = set()
+  if topic:
+    if topic in quotes_by_topic:
+      applicable_topic_quotes = set(quotes_by_topic[topic])
+  else:
+    applicable_topic_quotes = set(quotes)
 
-    applicable_quotes = applicable_author_quotes.intersection(applicable_topic_quotes)
+  # The matching quotes are in the intersection of the two sets.
+  applicable_quotes = applicable_author_quotes.intersection(applicable_topic_quotes)
 
-    if len(applicable_quotes) == 0:
-      return None
+  # Return None if there are no matching quotes.
+  if len(applicable_quotes) == 0:
+    return None
 
-    quote_to_return = random.choice(tuple(applicable_quotes))
+  # Return one of the matching quotes randomly.
+  quote_to_return = random.choice(tuple(applicable_quotes))
 
-    return quote_to_return
+  return quote_to_return
 
+# Returns the bio of the author specified in the parameters as a string, or
+# None if there is no matching author.
 def _get_bio():
-    parameters = request.json['result']['parameters']
-    if 'author' in parameters:
-      author = unicodedata.normalize('NFKC', parameters['author']).lower()
-      return bio_by_author.get(author)  # returns None if key does not exist
-    else:
-      return None
+  # Extract the author parameter. For robustness, the parameter name can be
+  # capitalized in any way.
+  parameters = request.json['result']['parameters']
+  author = None
+  for key, value in parameters.items():
+    if key.lower() == 'author':
+      author = unicodedata.normalize('NFKC', value).lower()
+
+  # Return the bio if we have it, None otherwise.
+  if author:
+    return bio_by_author.get(author)  # returns None if key does not exist
+  else:
+    return None
 
 class QuoteSearch(Resource):
+  # Handles a request from API.AI. The relevant part of the body is:
+  # {
+  #   "result": {
+  #       "parameters": {
+  #           "author": "Grace Hopper", 
+  #           "topic": "technology"
+  #       },
+  #       "action": "get_quote_event"
+  #   }
+  # }
+  # See the README for the full API, and for a full sample request see
+  # https://api.ai/docs/fulfillment#request.
   def post(self):
     action = request.json['result']['action']
 
@@ -151,6 +186,7 @@ class QuoteSearch(Resource):
     r.headers['Content-Type'] = 'application/json'
     return r
 
+# Register the quotesearch endpoint to be handled by the QuoteSerch class.
 api.add_resource(QuoteSearch, '/quotesearch')
 
 if __name__ == '__main__':
