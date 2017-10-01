@@ -35,9 +35,9 @@ Content-type application/json as sent by API.AI. See the full request format
 <table>
   <tbody>
     <tr>
-      <td width="20%">Action</td>
-      <td width="40%">Body</td>
-      <td width="40%">Output</td>
+      <th width="20%">Action</td>
+      <th width="40%">Body</td>
+      <th width="40%">Output</td>
     </tr>
     <tr>
       <td>
