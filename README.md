@@ -35,9 +35,9 @@ Content-type application/json as sent by API.AI. See the full request format
 <table>
   <tbody>
     <tr>
-      <td>Action</td>
-      <td>Body</td>
-      <td>Output</td>
+      <td width="20%">Action</td>
+      <td width="40%">Body</td>
+      <td width="40%">Output</td>
     </tr>
     <tr>
       <td>
@@ -47,7 +47,7 @@ Content-type application/json as sent by API.AI. See the full request format
         <div>{<br>&emsp;…<br>&emsp;&quot;result&quot;: {<br>&emsp;&emsp;&quot;parameters&quot;: {<br>&emsp;&emsp;&emsp;&quot;author&quot;: &quot;Grace Hopper&quot;,<br>&emsp;&emsp;&emsp;&quot;topic&quot;: &quot;computers&quot;<br>&emsp;&emsp;}, <br>&emsp;&emsp;&quot;action&quot;: &quot;get_quote_event&quot;<br>&emsp;&emsp;…<br>&emsp;}<br>}<br><br>Both parameters are optional.</div>
       </td>
       <td>
-        <div>{<br>&emsp;&quot;followupEvent&quot;: {<br>&emsp;&emsp;&quot;name&quot;: &quot;respond_with_quote&quot;,&emsp;&emsp;<br>&emsp;&emsp;&quot;data&quot;: {<br>&emsp;&emsp;&emsp; &quot;quote&quot;:&quot;computers&quot;,   <br>&emsp;&emsp;&emsp;"author":"Grace Hopper"<br>&emsp;&emsp;}<br>&emsp;}<br>}<br><br>|data| will be empty if there is no applicable quote.</div>
+        <div>{<br>&emsp;&quot;followupEvent&quot;: {<br>&emsp;&emsp;&quot;name&quot;: &quot;respond_with_quote&quot;,&emsp;&emsp;<br>&emsp;&emsp;&quot;data&quot;: {<br>&emsp;&emsp;&emsp;&quot;quote&quot;: &quot;computers&quot;,   <br>&emsp;&emsp;&emsp;"author": "Grace Hopper"<br>&emsp;&emsp;}<br>&emsp;}<br>}<br><br>|data| will be empty if there is no applicable quote.</div>
       </td>
     </tr>
     <tr>
@@ -58,7 +58,7 @@ Content-type application/json as sent by API.AI. See the full request format
         Same as above, except<br><br>&quot;action&quot;: &quot;get_quote_response&quot;
       </td>
       <td>
-        <div>{<br>&emsp;"displayText": "Here’s a quote by Grace Hopper: computers",<br>&emsp;"speech": "Here’s a quote by Grace Hopper: computers"<br>}</div>
+        <div>{<br>&emsp;"displayText": "Here’s a quote...",<br>&emsp;"speech": "Here’s a quote..."<br>}</div>
       </td>
     </tr>
     <tr>
@@ -69,7 +69,7 @@ Content-type application/json as sent by API.AI. See the full request format
         <div>{<br>&emsp;…<br>&emsp;&quot;result&quot;: {<br>&emsp;&emsp;&quot;parameters&quot;: {<br>&emsp;&emsp;&emsp;&quot;author&quot;: &quot;Grace Hopper&quot;<br>&emsp;&emsp;}, <br>&emsp;&emsp;&quot;action&quot;: &quot;get_bio_event&quot;<br>&emsp;&emsp;…<br>&emsp;}<br>}<br><br>The |author| parameter is required.</div>
       </td>
       <td>
-        <div>{<br>  &quot;followupEvent&quot;: {<br>&emsp;&emsp;&quot;name&quot;: &quot;respond_with_bio&quot;,&emsp;&emsp;<br>&emsp;&emsp;&quot;data&quot;: {<br>&emsp;&emsp;&emsp;&quot;bio&quot;:&quot;Grace Hopper was a computer scientist.&quot;<br>&emsp;&emsp;}<br>&emsp;}<br>}<br><br>|data| will be empty if there is no matching bio.</div>
+        <div>{<br>  &quot;followupEvent&quot;: {<br>&emsp;&emsp;&quot;name&quot;: &quot;respond_with_bio&quot;,&emsp;&emsp;<br>&emsp;&emsp;&quot;data&quot;: {<br>&emsp;&emsp;&emsp;&quot;bio&quot;: &quot;Grace Hopper...&quot;<br>&emsp;&emsp;}<br>&emsp;}<br>}<br><br>|data| will be empty if there is no matching bio.</div>
       </td>
     </tr>
     <tr>
@@ -80,7 +80,7 @@ Content-type application/json as sent by API.AI. See the full request format
         Same as above, except<br><br>&quot;action&quot;: &quot;get_bio_response&quot;
       </td>
       <td>
-        <div>{<br>&emsp;"displayText": "Here’s the bio of Grace Hopper: Grace Hopper was a computer scientist.",<br>&emsp;"speech": "Here’s the bio of Grace Hopper: Grace Hopper was a computer scientist."<br>}</div>
+        <div>{<br>&emsp;"displayText": "Here’s the bio...",<br>&emsp;"speech": "Here’s the bio..."<br>}</div>
       </td>
     </tr>
   </tbody>
