@@ -3,15 +3,13 @@
 # Created for the "Building a Conversational Agent" workshop at the 2017
 # Grace Hopper Conference.
 
-# [START app]
 import csv
 import logging
-import json
 import random
 import unicodedata
 
-from flask import Flask, request, make_response
-from flask_restful import Resource, Api
+from flask import Flask, jsonify, request
+from flask_restful import Api, Resource
 
 app = Flask(__name__)
 api = Api(app)
@@ -56,19 +54,26 @@ with open('quotes.csv', 'rb') as quotes_file:
     if normalized_author not in bio_by_author:
       bio_by_author[normalized_author] = bio
 
+# Exception for a bad request from the client.
+class BadRequestError(ValueError):
+  pass
+
 # Returns a quote object matching the parameters of the request, or None if
 # there are no matching quotes.
 def _get_quote():
   # Extract the author and topic parameters. For robustness, the parameter
   # names can be capitalized in any way.
-  parameters = request.json['result']['parameters']
   author = None
   topic = None
-  for key, value in parameters.items():
-    if key.lower() == 'author':
-      author = unicodedata.normalize('NFKC', value).lower()
-    elif key.lower() == 'topic':
-      topic = unicodedata.normalize('NFKC', value).lower()
+  parameters = request.json['result']['parameters']
+  if parameters:
+    for key, value in parameters.items():
+      if key.lower() == 'author':
+        author = unicodedata.normalize('NFKC', value).lower()
+      elif key.lower() == 'topic':
+        topic = unicodedata.normalize('NFKC', value).lower()
+      else:
+        raise BadRequestError('Unrecognized parameter in request: ' + key)
 
   # Find the set of quotes by the given author (all quotes if not specified).
   applicable_author_quotes = set()
@@ -108,6 +113,11 @@ def _get_bio():
   for key, value in parameters.items():
     if key.lower() == 'author':
       author = unicodedata.normalize('NFKC', value).lower()
+    else:
+      raise BadRequestError('Unrecognized parameter in request: ' + key)
+
+  if not author:
+    raise BadRequestError('No author parameter provided in request for bio.')
 
   # Return the bio if we have it, None otherwise.
   if author:
@@ -120,76 +130,91 @@ class QuoteSearch(Resource):
   # {
   #   "result": {
   #       "parameters": {
-  #           "author": "Grace Hopper", 
-  #           "topic": "technology"
+  #           <key>: <value>,
+  #           <key>: <value>
   #       },
-  #       "action": "get_quote_event"
+  #       "action": <action>
   #   }
   # }
   # See the README for the full API, and for a full sample request see
   # https://api.ai/docs/fulfillment#request.
   def post(self):
-    action = request.json['result']['action']
+    try:
+      if not request.json:
+        raise BadRequestError('No json body was provided in the request.')
 
-    if action == 'get_quote_event':
-      quote = _get_quote()
-      if quote:
-        response_json = json.dumps({
-          'followupEvent': {
-              'name': 'respond_with_quote',
-              'data': {
-                  'quote': quote[0],
-                  'author': quote[1]
-              }
-          }})
+      if 'result' not in request.json:
+        raise BadRequestError('"result" was not provided in the request body.')
+
+      if 'action' not in request.json['result']:
+        raise BadRequestError('No "action" was provided in the request.')
+
+      action = request.json['result']['action']
+
+      if action == 'get_quote_event':
+        quote = _get_quote()
+        if quote:
+          response_body = {
+            'followupEvent': {
+                'name': 'respond_with_quote',
+                'data': {
+                    'quote': quote[0],
+                    'author': quote[1]
+                }
+            }}
+        else:
+          response_body = {
+            'followupEvent': {
+                'name': 'respond_with_quote',
+                'data': {}
+            }}
+
+      elif action == 'get_quote_response':
+        quote = _get_quote()
+        if quote:
+          response = 'Here is a quote by ' + quote[1] + ': ' + quote[0]
+        else:
+          response = 'I have no matching quote.'
+        response_body = {'speech': response, 'displayText': response}
+
+      elif action == 'get_bio_event':
+        bio = _get_bio()
+        if bio:
+          response_body = {
+            'followupEvent': {
+                'name': 'respond_with_bio',
+                'data': {
+                    'bio': bio
+                }
+            }}
+        else:
+          response_body = {
+            'followupEvent': {
+                'name': 'respond_with_bio',
+                'data': {}
+            }}
+
+      elif action == 'get_bio_response':
+        bio = _get_bio()
+        if bio:
+          response = 'Here is the bio: ' + bio
+        else:
+          response = 'I have no matching bio.'
+        response_body = {'speech': response, 'displayText': response}
+
       else:
-        response_json = json.dumps({
-          'followupEvent': {
-              'name': 'respond_with_quote',
-              'data': {}
-          }})
+        raise BadRequestError('Request action unrecognized: "' + action + '"')
 
-    elif action == 'get_quote_response':
-      quote = _get_quote()
-      if quote:
-        response = 'Here is a quote by ' + quote[1] + ': ' + quote[0]
-      else:
-        response = 'I have no matching quote.'
-      response_json = json.dumps({'speech': response, 'displayText': response})
+      return jsonify(response_body)
 
-    elif action == 'get_bio_event':
-      bio = _get_bio()
-      if bio:
-        response_json = json.dumps({
-          'followupEvent': {
-              'name': 'respond_with_bio',
-              'data': {
-                  'bio': bio
-              }
-          }})
-      else:
-        response_json = json.dumps({
-          'followupEvent': {
-              'name': 'respond_with_bio',
-              'data': {}
-          }})
-
-    elif action == 'get_bio_response':
-      bio = _get_bio()
-      if bio:
-        response = 'Here is the bio: ' + bio
-      else:
-        response = 'I have no matching bio.'
-      response_json = json.dumps({'speech': response, 'displayText': response})
-
-    r = make_response(response_json)
-    r.headers['Content-Type'] = 'application/json'
-    return r
+    except BadRequestError as error:
+      response = jsonify(status=400, message=error.message)
+      response.status_code = 400
+      return response
 
 # Register the quotesearch endpoint to be handled by the QuoteSerch class.
 api.add_resource(QuoteSearch, '/quotesearch')
 
 if __name__ == '__main__':
-  app.run(debug=True)
+  app.run()
 
-# [END app]
