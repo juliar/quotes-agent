@@ -32,7 +32,7 @@ class MainTestCase(unittest.TestCase):
     message = json.loads(response.data)
     response_text = message['displayText']
     response_speech = message['speech']
-    assert response_text == response_speech
+    self.assertEqual(response_speech, response_text)
     return response_text
 
   # Performs a request to get an event with the given action and parameters,
@@ -77,42 +77,42 @@ class MainTestCase(unittest.TestCase):
 
   def test_get_quote_response(self):
     response_text = self._get_response_text('get_quote_response', {})
-    assert 'Here is a quote by' in response_text
+    self.assertIn('Here is a quote by', response_text)
 
   def test_get_quote_response_by_author(self):
     response_text = self._get_response_text(
         'get_quote_response',
         {'author': 'Grace Hopper'})
-    assert 'Here is a quote by Grace Hopper' in response_text
+    self.assertIn('Here is a quote by Grace Hopper', response_text)
 
   def test_get_quote_response_by_topic(self):
     response_text = self._get_response_text(
         'get_quote_response',
         {'topic': 'mathematics'})
-    assert 'Here is a quote by' in response_text
-    assert 'math' in response_text.lower()
+    self.assertIn('Here is a quote by', response_text)
+    self.assertIn('math', response_text.lower())
 
   def test_get_quote_response_by_author_and_topic(self):
     response_text = self._get_response_text(
         'get_quote_response',
         {'author': 'Grace Hopper',
          'topic': 'mathematics'})
-    assert 'Here is a quote by Grace Hopper' in response_text
-    assert 'math' in response_text.lower()
+    self.assertIn('Here is a quote by Grace Hopper', response_text)
+    self.assertIn('math', response_text.lower())
 
   def test_get_quote_response_parameter_capitalization(self):
     response_text = self._get_response_text(
         'get_quote_response',
         {'auThOr': 'grace hOpPer',
          'tOPIc': 'mAthEmatIcs'})
-    assert 'Here is a quote by Grace Hopper' in response_text
-    assert 'math' in response_text.lower()
+    self.assertIn('Here is a quote by Grace Hopper', response_text)
+    self.assertIn('math', response_text.lower())
 
   def test_get_quote_response_no_match(self):
     response_text = self._get_response_text(
         'get_quote_response',
         {'author': 'ksdjdkj'})
-    assert response_text == 'I have no matching quote.'
+    self.assertEqual('I have no matching quote.', response_text)
 
   def test_get_quote_response_unrecognized_parameter(self):
     response = self._do_request_with_inputs('get_quote_response',
@@ -125,51 +125,51 @@ class MainTestCase(unittest.TestCase):
 
   def test_get_quote_event(self):
     name, data = self._get_response_event('get_quote_event', {})
-    assert name == 'respond_with_quote'
-    assert data['quote']
-    assert data['author']
+    self.assertEqual('respond_with_quote', name)
+    self.assertTrue(data['quote'])
+    self.assertTrue(data['author'])
 
   def test_get_quote_event_by_author(self):
     name, data = self._get_response_event(
         'get_quote_event',
         {'author': 'Grace Hopper'})
-    assert name == 'respond_with_quote'
-    assert data['quote']
-    assert data['author'] == 'Grace Hopper'
+    self.assertEqual('respond_with_quote', name)
+    self.assertTrue(data['quote'])
+    self.assertEqual('Grace Hopper', data['author'])
 
   def test_get_quote_event_by_topic(self):
     name, data = self._get_response_event(
         'get_quote_event',
         {'topic': 'mathematics'})
-    assert name == 'respond_with_quote'
-    assert 'math' in data['quote'].lower()
-    assert data['author']
+    self.assertEqual('respond_with_quote', name)
+    self.assertIn('math', data['quote'].lower())
+    self.assertTrue(data['author'])
 
   def test_get_quote_event_by_author_and_topic(self):
     name, data = self._get_response_event(
         'get_quote_event',
         {'author': 'Grace Hopper',
          'topic': 'mathematics'})
-    assert name == 'respond_with_quote'
-    assert 'math' in data['quote'].lower()
-    assert data['author'] == 'Grace Hopper'
+    self.assertEqual('respond_with_quote', name)
+    self.assertIn('math', data['quote'].lower())
+    self.assertEqual('Grace Hopper', data['author'])
 
   def test_get_quote_event_parameter_capitalization(self):
     name, data = self._get_response_event(
         'get_quote_event',
         {'auThOr': 'grace hOpPer',
          'tOPIc': 'mAthEmatIcs'})
-    assert name == 'respond_with_quote'
-    assert 'math' in data['quote'].lower()
-    assert data['author'] == 'Grace Hopper'
+    self.assertEqual('respond_with_quote', name)
+    self.assertIn('math', data['quote'].lower())
+    self.assertEqual('Grace Hopper', data['author'])
 
   def test_get_quote_event_no_match(self):
     name, data = self._get_response_event(
         'get_quote_event',
         {'author': 'asdfjkjhd'})
-    assert name == 'respond_with_quote'
-    assert 'quote' not in data
-    assert 'author' not in data
+    self.assertEqual('respond_with_quote', name)
+    self.assertNotIn('quote', data)
+    self.assertNotIn('author', data)
 
   def test_get_quote_event_unrecognized_parameter(self):
     response = self._do_request_with_inputs('get_quote_event', {'diameter': 4})
@@ -182,19 +182,19 @@ class MainTestCase(unittest.TestCase):
     response_text = self._get_response_text(
         'get_bio_response',
         {'author': 'Grace Hopper'})
-    assert 'computer scientist' in response_text.lower()
+    self.assertIn('computer scientist', response_text.lower())
 
   def test_get_bio_response_parameter_capitalization(self):
     response_text = self._get_response_text(
         'get_bio_response',
         {'auThOr': 'grace hOpPer'})
-    assert 'computer scientist' in response_text.lower()
+    self.assertIn('computer scientist', response_text.lower())
 
   def test_get_bio_response_no_match(self):
     response_text = self._get_response_text(
         'get_bio_response',
         {'author': 'asdkfjasdf'})
-    assert response_text == 'I have no matching bio.'
+    self.assertEqual('I have no matching bio.', response_text)
 
   def test_get_bio_response_unrecognized_parameter(self):
     response = self._do_request_with_inputs('get_bio_response',
@@ -215,22 +215,22 @@ class MainTestCase(unittest.TestCase):
     name, data = self._get_response_event(
         'get_bio_event',
         {'author': 'Grace Hopper'})
-    assert name == 'respond_with_bio'
-    assert 'computer scientist' in data['bio'].lower()
+    self.assertEqual('respond_with_bio', name)
+    self.assertIn('computer scientist', data['bio'].lower())
 
   def test_get_bio_event_parameter_capitalization(self):
     name, data = self._get_response_event(
         'get_bio_event',
         {'auThOr': 'grace hOpPer'})
-    assert name == 'respond_with_bio'
-    assert 'computer scientist' in data['bio'].lower()
+    self.assertEqual('respond_with_bio', name)
+    self.assertIn('computer scientist', data['bio'].lower())
 
   def test_get_bio_event_no_match(self):
     name, data = self._get_response_event(
         'get_bio_event',
         {'author': 'asdkjfaksjdhf'})
-    assert name == 'respond_with_bio'
-    assert 'bio' not in data
+    self.assertEqual('respond_with_bio', name)
+    self.assertNotIn('bio', data)
 
   def test_get_bio_event_unrecognized_parameter(self):
     response = self._do_request_with_inputs('get_bio_event',
