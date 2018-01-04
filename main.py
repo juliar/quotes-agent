@@ -142,7 +142,7 @@ class QuoteSearch(Resource):
   #   }
   # }
   # See the README for the full API, and for a full sample request see
-  # https://api.ai/docs/fulfillment#request.
+  # https://dialogflow.com/docs/fulfillment#request.
   def post(self):
     try:
       if not request.json:
