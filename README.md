@@ -1,6 +1,6 @@
 This is a service to serve quotes and bios of famous women in STEM.
 It is used as the webhook for a demo conversational agent built with
-[API.AI](https://api.ai/) for the "Building a Conversational Agent" workshop
+[Dialogflow](http://dialogflow.com/) for the "Building a Conversational Agent" workshop
 at the 2017 Grace Hopper Conference.
 
 The service is written using [Flask-RESTful](https://flask-restful.readthedocs.io)
@@ -29,8 +29,8 @@ To deploy, run
     gcloud app deploy app.yaml
 
 The service has one endpoint '/quotesearch'. It accepts POST requests with
-Content-type application/json as sent by API.AI. See the full request format
-[here](https://api.ai/docs/fulfillment#request). It handles 4 actions:
+Content-type application/json as sent by Dialogflow. See the full request format
+[here](https://dialogflow.com/docs/fulfillment#request). It handles 4 actions:
 
 <table>
   <tbody>
