@@ -1,6 +1,6 @@
 This is a service to serve quotes and bios of famous women in STEM.
 It is used as the webhook for a demo conversational agent built with
-[API.AI](https://api.ai/) for the "Building a Conversational Agent" workshop
+[Dialogflow](http://dialogflow.com/) for the "Building a Conversational Agent" workshop
 at the 2017 Grace Hopper Conference.
 
 The service is written using [Flask-RESTful](https://flask-restful.readthedocs.io)
@@ -29,58 +29,58 @@ To deploy, run
     gcloud app deploy app.yaml
 
 The service has one endpoint '/quotesearch'. It accepts POST requests with
-Content-type application/json as sent by API.AI. See the full request format
-[here](https://api.ai/docs/fulfillment#request). It handles 4 actions:
+Content-type application/json as sent by Dialogflow. See the full request format
+[here](https://dialogflow.com/docs/fulfillment#request). It handles 4 actions:
 
 <table>
   <tbody>
     <tr>
-      <td>Objective</td>
-      <td>Body</td>
-      <td>Output</td>
+      <th width="20%">Action</td>
+      <th width="40%">Body</td>
+      <th width="40%">Output</td>
     </tr>
     <tr>
       <td>
-        <div>Get a quote response as a followup event.</div>
+        <div>get_quote_event<br><br>Get a quote response as a followup event.</div>
       </td>
       <td>
-        <div>{<br>  …<br>  &quot;result&quot;: {<br>    &quot;parameters&quot;: {<br>      &quot;author&quot;: &quot;Grace Hopper&quot;,<br>      &quot;topic&quot;: &quot;computers&quot;<br>    }, <br>    &quot;action&quot;: &quot;get_quote_event&quot;<br>    …<br>  }<br>}<br><br>Both parameters are optional.</div>
+        <div>{<br>&emsp;…<br>&emsp;&quot;result&quot;: {<br>&emsp;&emsp;&quot;parameters&quot;: {<br>&emsp;&emsp;&emsp;&quot;author&quot;: &quot;Grace Hopper&quot;,<br>&emsp;&emsp;&emsp;&quot;topic&quot;: &quot;computers&quot;<br>&emsp;&emsp;}, <br>&emsp;&emsp;&quot;action&quot;: &quot;get_quote_event&quot;<br>&emsp;&emsp;…<br>&emsp;}<br>}<br><br>Both parameters are optional.</div>
       </td>
       <td>
-        <div>{<br>  &quot;followupEvent&quot;: {<br>    &quot;name&quot;: &quot;respond_with_quote&quot;,   <br>    &quot;data&quot;: {<br>      &quot;quote&quot;:&quot;computers&quot;,   <br>      "author":"Grace Hopper"<br>    }<br>  }<br>}<br><br>|data| will be empty if there is no applicable quote.</div>
+        <div>{<br>&emsp;&quot;followupEvent&quot;: {<br>&emsp;&emsp;&quot;name&quot;: &quot;respond_with_quote&quot;,&emsp;&emsp;<br>&emsp;&emsp;&quot;data&quot;: {<br>&emsp;&emsp;&emsp;&quot;quote&quot;: &quot;computers&quot;,   <br>&emsp;&emsp;&emsp;"author": "Grace Hopper"<br>&emsp;&emsp;}<br>&emsp;}<br>}<br><br>|data| will be empty if there is no applicable quote.</div>
       </td>
     </tr>
     <tr>
       <td>
-        <div>Get a quote response as response text.</div>
+        <div>get_quote_response<br><br>Get a quote response as response text.</div>
       </td>
       <td>
         Same as above, except<br><br>&quot;action&quot;: &quot;get_quote_response&quot;
       </td>
       <td>
-        <div>{<br>  "displayText": "Here’s a quote by Grace Hopper: computers",<br>  "speech": "Here’s a quote by Grace Hopper: computers"<br>}</div>
+        <div>{<br>&emsp;"displayText": "Here’s a quote...",<br>&emsp;"speech": "Here’s a quote..."<br>}</div>
       </td>
     </tr>
     <tr>
       <td>
-        <div>Get an author bio response as a followup event.</div>
+        <div>get_bio_event<br><br>Get an author bio response as a followup event.</div>
       </td>
       <td>
-        <div>{<br>  …<br>  &quot;result&quot;: {<br>    &quot;parameters&quot;: {<br>      &quot;author&quot;: &quot;Grace Hopper&quot;<br>    }, <br>    &quot;action&quot;: &quot;get_bio_event&quot;<br>    …<br>  }<br>}<br><br>The |author| parameter is required.</div>
+        <div>{<br>&emsp;…<br>&emsp;&quot;result&quot;: {<br>&emsp;&emsp;&quot;parameters&quot;: {<br>&emsp;&emsp;&emsp;&quot;author&quot;: &quot;Grace Hopper&quot;<br>&emsp;&emsp;}, <br>&emsp;&emsp;&quot;action&quot;: &quot;get_bio_event&quot;<br>&emsp;&emsp;…<br>&emsp;}<br>}<br><br>The |author| parameter is required.</div>
       </td>
       <td>
-        <div>{<br>  &quot;followupEvent&quot;: {<br>    &quot;name&quot;: &quot;respond_with_bio&quot;,   <br>    &quot;data&quot;: {<br>      &quot;bio&quot;:&quot;Grace Hopper was a computer scientist.&quot;<br>    }<br>  }<br>}<br><br>|data| will be empty if there is no matching bio.</div>
+        <div>{<br>  &quot;followupEvent&quot;: {<br>&emsp;&emsp;&quot;name&quot;: &quot;respond_with_bio&quot;,&emsp;&emsp;<br>&emsp;&emsp;&quot;data&quot;: {<br>&emsp;&emsp;&emsp;&quot;bio&quot;: &quot;Grace Hopper...&quot;<br>&emsp;&emsp;}<br>&emsp;}<br>}<br><br>|data| will be empty if there is no matching bio.</div>
       </td>
     </tr>
     <tr>
       <td>
-        <div>Get an author bio response as response text.</div>
+        <div>get_bio_response<br><br>Get an author bio response as response text.</div>
       </td>
       <td>
         Same as above, except<br><br>&quot;action&quot;: &quot;get_bio_response&quot;
       </td>
       <td>
-        <div>{<br>  "displayText": "Here’s the bio of Grace Hopper: Grace Hopper was a computer scientist.",<br>  "speech": "Here’s the bio of Grace Hopper: Grace Hopper was a computer scientist."<br>}</div>
+        <div>{<br>&emsp;"displayText": "Here’s the bio...",<br>&emsp;"speech": "Here’s the bio..."<br>}</div>
       </td>
     </tr>
   </tbody>
