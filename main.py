@@ -65,15 +65,16 @@ def _get_quote():
   # names can be capitalized in any way.
   author = None
   topic = None
-  parameters = request.json['result']['parameters']
-  if parameters:
-    for key, value in parameters.items():
-      if key.lower() == 'author':
-        author = unicodedata.normalize('NFKC', value).lower()
-      elif key.lower() == 'topic':
-        topic = unicodedata.normalize('NFKC', value).lower()
-      else:
-        raise BadRequestError('Unrecognized parameter in request: ' + key)
+  if 'parameters' in request.json['result']:
+    parameters = request.json['result']['parameters']
+    if parameters:
+      for key, value in parameters.items():
+        if key.lower() == 'author':
+          author = unicodedata.normalize('NFKC', value).lower()
+        elif key.lower() == 'topic':
+          topic = unicodedata.normalize('NFKC', value).lower()
+        else:
+          raise BadRequestError('Unrecognized parameter in request: ' + key)
 
   # Find the set of quotes by the given author (all quotes if not specified).
   applicable_author_quotes = set()
@@ -108,6 +109,10 @@ def _get_quote():
 def _get_bio():
   # Extract the author parameter. For robustness, the parameter name can be
   # capitalized in any way.
+  if 'parameters' not in request.json['result']:
+    raise BadRequestError('No parameters provided in request for a bio, but ' +
+                          'an author must be specified.')
+
   parameters = request.json['result']['parameters']
   author = None
   for key, value in parameters.items():
