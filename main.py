@@ -7,12 +7,31 @@ import csv
 import logging
 import random
 import unicodedata
+from collections import namedtuple
 
 from flask import Flask, jsonify, request
 from flask_restful import Api, Resource
 
+# Dialogflow request and response field names.
+RESULT_FIELD_V1 = 'result'
+RESULT_FIELD_V2 = 'queryResult'
+ACTION_FIELD = 'action'
+PARAMS_FIELD = 'parameters'
+AUTHOR_PARAM_NAME = 'author'
+TOPIC_PARAM_NAME = 'topic'
+
+EVENT_FIELD_V1 = 'followupEvent'
+EVENT_FIELD_V2 = 'followupEventInput'
+EVENT_NAME_FIELD = 'name'
+EVENT_PARAMS_FIELD_V1 = 'data'
+EVENT_PARAMS_FIELD_V2 = 'parameters'
+
+
 app = Flask(__name__)
 api = Api(app)
+
+# Named tuple to store the relevant parameters of the request.
+Params = namedtuple('Params', ['action', 'author', 'topic'])
 
 # List of (quote, author, (topic1, topic2, ...)) tuples.
 quotes = []
@@ -60,37 +79,22 @@ class BadRequestError(ValueError):
 
 # Returns a quote object matching the parameters of the request, or None if
 # there are no matching quotes.
-def _get_quote():
-  # Extract the author and topic parameters. For robustness, the parameter
-  # names can be capitalized in any way.
-  author = None
-  topic = None
-  if 'parameters' in request.json['result']:
-    parameters = request.json['result']['parameters']
-    if parameters:
-      for key, value in parameters.items():
-        if key.lower() == 'author':
-          author = unicodedata.normalize('NFKC', value).lower()
-        elif key.lower() == 'topic':
-          topic = unicodedata.normalize('NFKC', value).lower()
-        else:
-          raise BadRequestError('Unrecognized parameter in request: ' + key)
-
+def _get_quote(params):
   # Find the set of quotes by the given author (all quotes if not specified).
   applicable_author_quotes = set()
-  if author:
-    if author in quotes_by_author:
-      applicable_author_quotes = set(quotes_by_author[author])
-  else:
+  if params.author is None:
     applicable_author_quotes = set(quotes)
+  else:
+    if params.author in quotes_by_author:
+      applicable_author_quotes = set(quotes_by_author[params.author])
 
   # Find the set of quotes on the given topic (all quotes if not given).
   applicable_topic_quotes = set()
-  if topic:
-    if topic in quotes_by_topic:
-      applicable_topic_quotes = set(quotes_by_topic[topic])
-  else:
+  if params.topic is None:
     applicable_topic_quotes = set(quotes)
+  else:
+    if params.topic in quotes_by_topic:
+      applicable_topic_quotes = set(quotes_by_topic[params.topic])
 
   # The matching quotes are in the intersection of the two sets.
   applicable_quotes = applicable_author_quotes.intersection(applicable_topic_quotes)
@@ -106,29 +110,64 @@ def _get_quote():
 
 # Returns the bio of the author specified in the parameters as a string, or
 # None if there is no matching author.
-def _get_bio():
+def _get_bio(params):
   # Extract the author parameter. For robustness, the parameter name can be
   # capitalized in any way.
-  if 'parameters' not in request.json['result']:
-    raise BadRequestError('No parameters provided in request for a bio, but ' +
-                          'an author must be specified.')
+  if params.author is None:
+    raise BadRequestError('No author parameter provided in request for a ' +
+                          'bio, but an author must be specified.')
 
-  parameters = request.json['result']['parameters']
+  return bio_by_author.get(params.author)  # returns None if key does not exist
+
+# Returns a Params object populated with the parameters extracted from the
+# result in the Dialogflow request.
+def _extract_params(result):
+  action = None
   author = None
-  for key, value in parameters.items():
-    if key.lower() == 'author':
-      author = unicodedata.normalize('NFKC', value).lower()
-    else:
-      raise BadRequestError('Unrecognized parameter in request: ' + key)
+  topic = None
 
-  if not author:
-    raise BadRequestError('No author parameter provided in request for bio.')
+  if ACTION_FIELD in result:
+    action = result[ACTION_FIELD]
 
-  # Return the bio if we have it, None otherwise.
-  if author:
-    return bio_by_author.get(author)  # returns None if key does not exist
+  # Extract the author and topic parameters, if present. For robustness, the
+  # parameter names can be capitalized in any way.
+  if PARAMS_FIELD in result:
+    parameters_dict = result[PARAMS_FIELD]
+    if parameters_dict:
+      for key, value in parameters_dict.items():
+        if key.lower() == AUTHOR_PARAM_NAME:
+          if value:
+            author = unicodedata.normalize('NFKC', value).lower()
+        elif key.lower() == TOPIC_PARAM_NAME:
+          if value:
+            topic = unicodedata.normalize('NFKC', value).lower()
+        else:
+          raise BadRequestError('Unrecognized parameter in request: ' + key)
+
+  return Params(action, author, topic)
+
+# Returns an event response with the provided name and params.
+def _get_response_event(name, params, is_v1):
+  if is_v1:
+    event_field = EVENT_FIELD_V1
+    params_field = EVENT_PARAMS_FIELD_V1
   else:
-    return None
+    event_field = EVENT_FIELD_V2
+    params_field = EVENT_PARAMS_FIELD_V2
+  return {
+           event_field : {
+             EVENT_NAME_FIELD : name,
+             params_field : params
+           }
+         }
+
+# Returns a text response with the provided text.
+def _get_response_text(text, is_v1):
+  if is_v1:
+    return {'speech': text, 'displayText': text}
+  else:
+    return {'fulfillmentText': text}
+
 
 class QuoteSearch(Resource):
   # Handles a request from API.AI. The relevant part of the body is:
@@ -148,67 +187,63 @@ class QuoteSearch(Resource):
       if not request.json:
         raise BadRequestError('No json body was provided in the request.')
 
-      if 'result' not in request.json:
-        raise BadRequestError('"result" was not provided in the request body.')
+      if RESULT_FIELD_V1 in request.json:
+        params = _extract_params(request.json[RESULT_FIELD_V1])
+        is_v1 = True
+      elif RESULT_FIELD_V2 in request.json:
+        params = _extract_params(request.json[RESULT_FIELD_V2])
+        is_v1 = False
+      else:
+        raise BadRequestError('Neither "result" nor "queryResult" was ' +
+                              'provided in the request body.')
 
-      if 'action' not in request.json['result']:
+      if params.action is None:
         raise BadRequestError('No "action" was provided in the request.')
 
-      action = request.json['result']['action']
-
-      if action == 'get_quote_event':
-        quote = _get_quote()
+      if params.action == 'get_quote_event':
+        quote = _get_quote(params)
         if quote:
-          response_body = {
-            'followupEvent': {
-                'name': 'respond_with_quote',
-                'data': {
-                    'quote': quote[0],
-                    'author': quote[1]
-                }
-            }}
+          response_body = _get_response_event(
+            'respond_with_quote', 
+            {
+              'quote': quote[0],
+              'author': quote[1]
+            },
+            is_v1)
         else:
-          response_body = {
-            'followupEvent': {
-                'name': 'respond_with_quote',
-                'data': {}
-            }}
+          response_body = _get_response_event('quote_not_found', {}, is_v1)
 
-      elif action == 'get_quote_response':
-        quote = _get_quote()
+      elif params.action == 'get_quote_response':
+        quote = _get_quote(params)
         if quote:
           response = 'Here is a quote by ' + quote[1] + ': ' + quote[0]
         else:
           response = 'I have no matching quote.'
-        response_body = {'speech': response, 'displayText': response}
+        response_body = _get_response_text(response, is_v1)
 
-      elif action == 'get_bio_event':
-        bio = _get_bio()
+      elif params.action == 'get_bio_event':
+        bio = _get_bio(params)
         if bio:
-          response_body = {
-            'followupEvent': {
-                'name': 'respond_with_bio',
-                'data': {
-                    'bio': bio
-                }
-            }}
+          response_body = _get_response_event(
+            'respond_with_bio',
+            {
+              'bio': bio
+            },
+            is_v1)
         else:
-          response_body = {
-            'followupEvent': {
-                'name': 'respond_with_bio',
-                'data': {}
-            }}
+          response_body = _get_response_event('bio_not_found', {}, is_v1)
 
-      elif action == 'get_bio_response':
-        bio = _get_bio()
+      elif params.action == 'get_bio_response':
+        bio = _get_bio(params)
         if bio:
           response = 'Here is the bio: ' + bio
         else:
           response = 'I have no matching bio.'
-        response_body = {'speech': response, 'displayText': response}
+        response_body = _get_response_text(response, is_v1)
 
       else:
-        raise BadRequestError('Request action unrecognized: "' + action + '"')
+        raise BadRequestError('Request action unrecognized: "' +
+                              params.action + '"')
 
       return jsonify(response_body)
 
